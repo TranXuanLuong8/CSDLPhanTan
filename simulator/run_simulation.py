@@ -24,6 +24,12 @@ def print_snapshot(title, nodes):
 
 def main():
     base_dir = os.path.join(os.path.dirname(__file__), "data")
+    log_dir = os.path.join(os.path.dirname(__file__), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    for name in ("coordinator.log", "p1.log", "p2.log"):
+        path = os.path.join(log_dir, name)
+        if os.path.exists(path):
+            os.remove(path)
     generate()
     stores = build_datastores(base_dir)
 
@@ -31,7 +37,12 @@ def main():
     coordinator_id = "C"
     participant_ids = ["P1", "P2"]
 
-    coordinator = Coordinator(coordinator_id, network, participant_ids)
+    coordinator = Coordinator(
+        coordinator_id,
+        network,
+        participant_ids,
+        log_path=os.path.join(log_dir, "coordinator.log"),
+    )
 
     p1 = Participant(
         "P1",
@@ -39,6 +50,7 @@ def main():
         datastores=stores,
         owned_resources={"hotel", "flight"},
         peer_ids=["P1", "P2"],
+        log_path=os.path.join(log_dir, "p1.log"),
     )
     p2 = Participant(
         "P2",
@@ -46,6 +58,7 @@ def main():
         datastores=stores,
         owned_resources={"car"},
         peer_ids=["P1", "P2"],
+        log_path=os.path.join(log_dir, "p2.log"),
     )
 
     network.register(coordinator_id, coordinator)
@@ -61,21 +74,46 @@ def main():
 
     coordinator.start_transaction(tx_id, reservations)
     coordinator.send_vote_req()
+    
+    # 1. Gửi PRE_COMMIT thành công cho tất cả (Tránh bẫy Split-brain của GPT)
     coordinator.send_pre_commit()
 
     print_snapshot("Before partition", [coordinator, p1, p2])
 
-    # Partition: coordinator and P1 isolated from P2.
+    # 2. Cắt mạng: coordinator + P1 bị cô lập khỏi P2
     network.set_partitions([{coordinator_id, "P1"}, {"P2"}])
 
-    # Coordinator commits but P2 will not receive the COMMIT message.
-    coordinator.send_commit()
+    # 3. Coordinator crash
+    network.unregister(coordinator_id)
 
-    # P2 times out in PRE_COMMIT and runs termination protocol.
+    # 4. P2 crash và khôi phục từ log (Chứng minh Participant Recovery)
+    p2 = Participant(
+        "P2",
+        network,
+        datastores=stores,
+        owned_resources={"car"},
+        peer_ids=["P1", "P2"],
+        log_path=os.path.join(log_dir, "p2.log"),
+    )
+    network.register("P2", p2)
+
+    # 5. P1 và P2 tự động quyết định mà không cần Coordinator (Chứng minh Non-blocking)
+    p1_decision = p1.handle_pre_commit_timeout()
     p2_decision = p2.handle_pre_commit_timeout()
 
-    print_snapshot("After partition and timeout", [coordinator, p1, p2])
+    print_snapshot("After partition and timeout", [p1, p2])
+    print(f"P1 termination decision: {p1_decision}")
     print(f"P2 termination decision: {p2_decision}")
+    coordinator_recovered = Coordinator(
+        coordinator_id,
+        network,
+        participant_ids,
+        log_path=os.path.join(log_dir, "coordinator.log"),
+    )
+    network.register(coordinator_id, coordinator_recovered)
+    c_decision = coordinator_recovered.resume_after_crash()
+    print(f"Coordinator recovered to state: {coordinator_recovered.state}")
+    print(f"Coordinator resume decision: {c_decision}")
 
     print("\nAvailability snapshot:")
     for name, store in stores.items():

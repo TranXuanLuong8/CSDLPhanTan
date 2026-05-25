@@ -7,6 +7,10 @@ class Network:
     def register(self, node_id, node):
         self.nodes[node_id] = node
 
+    def unregister(self, node_id):
+        if node_id in self.nodes:
+            del self.nodes[node_id]
+
     def set_partitions(self, partitions):
         # partitions: list of sets of node_ids
         self.partitions = [set(p) for p in partitions]
