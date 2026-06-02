@@ -75,18 +75,13 @@ def main():
     coordinator.start_transaction(tx_id, reservations)
     coordinator.send_vote_req()
     
-    # 1. Gửi PRE_COMMIT thành công cho tất cả (Tránh bẫy Split-brain của GPT)
     coordinator.send_pre_commit()
 
     print_snapshot("Before partition", [coordinator, p1, p2])
 
-    # 2. Cắt mạng: coordinator + P1 bị cô lập khỏi P2
     network.set_partitions([{coordinator_id, "P1"}, {"P2"}])
-
-    # 3. Coordinator crash
     network.unregister(coordinator_id)
 
-    # 4. P2 crash và khôi phục từ log (Chứng minh Participant Recovery)
     p2 = Participant(
         "P2",
         network,
@@ -97,7 +92,6 @@ def main():
     )
     network.register("P2", p2)
 
-    # 5. P1 và P2 tự động quyết định mà không cần Coordinator (Chứng minh Non-blocking)
     p1_decision = p1.handle_pre_commit_timeout()
     p2_decision = p2.handle_pre_commit_timeout()
 

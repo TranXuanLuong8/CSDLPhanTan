@@ -12,7 +12,6 @@ class Network:
             del self.nodes[node_id]
 
     def set_partitions(self, partitions):
-        # partitions: list of sets of node_ids
         self.partitions = [set(p) for p in partitions]
 
     def clear_partitions(self):
