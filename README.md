@@ -14,7 +14,9 @@
 
 ## 📋 **Tổng Quan**
 
-Dự án này triển khai **Mô Phỏng Giao Thức Cam Kết Ba Giai Đoạn (3PC)**, một thuật toán điều phối giao dịch phân tán mạnh mẽ được sử dụng trong các hệ thống đa người tham gia. Mô phỏng này trình bày cách một điều phối viên đảm bảo tính nhất quán trên nhiều người tham gia trong môi trường cơ sở dữ liệu phân tán.
+Dự án này triển khai **Mô Phỏng Giao Thức Cam Kết Ba Giai Đoạn (3PC)**, một thuật toán điều phối giao dịch phân tán mạnh mẽ được sử dụng trong các hệ thống đa người tham gia. Mô phỏng này trình bày cách một điều phối viên đảm bảo tính nhất quán trên nhiều người tham gia và cách hệ thống xử lý lỗi để tránh bị chặn.
+
+Mô phỏng tập trung vào việc chứng minh tính **không bị chặn (non-blocking)** của 3PC khi Coordinator gặp sự cố.
 
 ### 🎪 **Trường Hợp Sử Dụng**
 Hệ thống mô phỏng một **nền tảng đặt chỗ** cho các loại hình du lịch:
@@ -45,42 +47,31 @@ Hệ thống mô phỏng một **nền tảng đặt chỗ** cho các loại hì
 
 ---
 
-## 🏗️ **Kiến Trúc**
+## 🏗️ **Kiến Trúc và Kịch Bản Lỗi**
 
-### **Luồng Giao Thức Cam Kết Ba Giai Đoạn**
+### **Luồng Giao Thức 3PC**
 
-```
-Giai Đoạn 1: YÊU CẦU BÌNH CHỌN
-   Điều Phối Viên → Người Tham Gia (Bạn có thể cam kết giao dịch này không?)
-   
-Giai Đoạn 2: PRE-COMMIT
-   Người Tham Gia → Điều Phối Viên (Có/Không bình chọn)
-   Điều Phối Viên → Người Tham Gia (Pre-commit tất cả hay hủy bỏ?)
-   
-Giai Đoạn 3: COMMIT/HỦY BỎ
-   Người Tham Gia → Điều Phối Viên (Xác nhận)
-   Điều Phối Viên → Người Tham Gia (Quyết định cuối cùng: COMMIT hay HỦY BỎ)
-```
+1.  **Giai Đoạn 1: YÊU CẦU BÌNH CHỌN (VOTE_REQUEST)**
+    *   Điều Phối Viên → Người Tham Gia: "Bạn có thể cam kết giao dịch này không?"
+2.  **Giai Đoạn 2: PRE-COMMIT**
+    *   Người Tham Gia → Điều Phối Viên: "Có, tôi có thể." (Vote Commit)
+    *   Điều Phối Viên → Người Tham Gia: "Chuẩn bị cam kết." (Pre-commit)
+3.  **Giai Đoạn 3: COMMIT**
+    *   Người Tham Gia → Điều Phối Viên: "Đã nhận lệnh Pre-commit." (ACK)
+    *   Điều Phối Viên → Người Tham Gia: "Cam kết giao dịch." (Commit)
 
-### **Các Thành Phần Chính**
+### **Kịch Bản Mô Phỏng Lỗi**
 
-| Thành Phần | Vai Trò |
-|-----------|--------|
-| **Điều Phối Viên** 🎯 | Quyền lực trung tâm điều phối các giao dịch |
-| **Người Tham Gia** 👥 | Các nút (P1, P2) quản lý tài nguyên và bình chọn cam kết |
-| **Mạng** 🌐 | Mô phỏng truyền tin nhắn giữa các nút |
-| **Kho Dữ Liệu** 💾 | Quản lý hàng tồn kho cho khách sạn, máy bay và ô tô |
+Mô phỏng được thiết kế để kiểm tra khả năng phục hồi của 3PC:
 
----
-
-## 🔑 **Các Tính Năng Chính**
-
-✅ **Quyết Định Dựa Trên Sự Đồng Thuận** - Tất cả người tham gia phải đồng ý cam kết  
-✅ **Ghi Nhật Ký Giao Dịch** - Đầy đủ hồi sơ của tất cả các hoạt động  
-✅ **Quản Lý Trạng Thái** - Theo dõi INIT → WAIT → PRE_COMMIT → COMMIT/HỦY BỎ  
-✅ **Mô Phỏng Mạng** - Truyền tin nhắn hệ thống phân tán thực tế  
-✅ **Đặt Chỗ Đa Tài Nguyên** - Điều phối trên nhiều kho dữ liệu  
-✅ **Xử Lý Lỗi** - Hủy bỏ nhẹ nhàng khi có bất đồng ý kiến  
+1.  **Coordinator gửi PRE_COMMIT** đến tất cả các participant.
+2.  **Sự cố xảy ra**:
+    *   **Mạng bị phân vùng**, cô lập một participant (`P2`) khỏi Coordinator (`C`) và participant còn lại (`P1`).
+    *   **Coordinator (`C`) bị crash** ngay sau đó.
+3.  **Giao thức Chấm dứt (Termination Protocol)** được kích hoạt:
+    *   Các participant bị hết thời gian chờ (timeout) vì không nhận được lệnh `COMMIT` cuối cùng.
+    *   Chúng sẽ hỏi trạng thái của các participant khác.
+    *   Vì tất cả đã ở trạng thái `PRE_COMMIT`, chúng có thể tự quyết định `COMMIT` một cách an toàn mà không cần Coordinator.
 
 ---
 
@@ -88,16 +79,25 @@ Giai Đoạn 3: COMMIT/HỦY BỎ
 
 ### **Điều Kiện Tiên Quyết**
 - Python 3.x
-- File CSV cho bộ dữ liệu (tự động tạo khi chạy lần đầu)
 
-### **Cài Đặt**
+### **Chạy Mô Phỏng**
 
-```bash
-# Chuyển đến thư mục mô phỏng
-cd simulator
+1.  **Chuyển đến thư mục gốc của dự án:**
+    ```bash
+    cd /path/to/3PCS
+    ```
 
-# Chạy mô phỏng
-python run_simulation.py
+2.  **Chạy kịch bản mô phỏng:**
+    ```bash
+    python simulator/run_simulation.py
+    ```
+
+    Lệnh này sẽ thực hiện các bước sau:
+    - Xóa và tạo lại các file log trong thư mục `logs/`.
+    - Tạo bộ dữ liệu mới, lớn hơn (100 bản ghi mỗi loại) trong `data/`.
+    - Chạy kịch bản mô phỏng 3PC với lỗi đã định sẵn.
+    - In ra trạng thái của các nút tại các thời điểm quan trọng và quyết định cuối cùng của chúng.
+
 ```
 
 ### **Đầu Ra**
@@ -146,22 +146,25 @@ STATE_ABORT     → Giao dịch bị khôi phục
 ```python
 Coordinator(node_id, network, participant_ids, log_path)
 - on_message(message, from_id)      # Xử lý tin nhắn đến
-- start_transaction(reservations)   # Khởi tạo giao dịch mới
+- start_transaction(tx_id, reservations)   # Khởi tạo giao dịch mới
+- send_vote_req()                   # Gửi yêu cầu bỏ phiếu
+- send_pre_commit()                 # Gửi PRE_COMMIT (khi đủ phiếu)
+- resume_after_crash()              # Phục hồi sau khi crash
 ```
 
 ### **Người Tham Gia**
 ```python
-Participant(node_id, network, datastores, log_path)
+Participant(node_id, network, datastores, owned_resources, peer_ids, log_path)
 - on_message(message, from_id)      # Xử lý yêu cầu điều phối viên
-- can_commit()                      # Bình chọn về giao dịch
+- handle_pre_commit_timeout()       # Quyết định khi timeout ở PRE_COMMIT
+- handle_wait_timeout()             # Quyết định khi timeout ở WAIT
 ```
 
 ### **Kho Dữ Liệu**
 ```python
 DataStore(name, csv_path)
-- reserve(quantity)                 # Đặt chỗ tài nguyên
-- commit()                          # Hoàn tất đặt chỗ
-- abort()                           # Khôi phục đặt chỗ
+- can_reserve(item_id, qty)         # Kiểm tra khả dụng
+- reserve(item_id, qty)             # Đặt chỗ tài nguyên
 ```
 
 ---

@@ -55,7 +55,7 @@ class Participant:
                 "type": "VOTE_ABORT",
                 "tx_id": self.tx_id,
             })
-
+    
     def _on_pre_commit(self, message, from_id):
         if self.state != STATE_WAIT:
             return
@@ -131,9 +131,6 @@ class Participant:
             return STATE_ABORT
         if any(s == STATE_COMMIT for s in states):
             return STATE_COMMIT
-        # TR3/TR4 (Özsu): Nếu các node trả về đều ở PRE_COMMIT, HOẶC có node ở WAIT.
-        # Vì bản thân Node này đã vào được PRE_COMMIT (tức là tất cả đã vote YES),
-        # nên quyết định an toàn và duy nhất lúc này là tiến tới COMMIT.
         return STATE_COMMIT
 
     def _wait_termination_decision(self, states):
@@ -144,8 +141,6 @@ class Participant:
             return STATE_COMMIT
         if any(s == STATE_PRE_COMMIT for s in states):
             return STATE_COMMIT
-        # Nếu tất cả những node liên lạc được đều đang bị mắc kẹt ở WAIT,
-        # theo luật Özsu ta bắt buộc phải ABORT (vì Coordinator có thể đã quyết định Abort trước khi crash)
         return STATE_ABORT
 
     def _can_commit(self):

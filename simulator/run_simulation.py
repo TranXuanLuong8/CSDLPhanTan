@@ -77,39 +77,33 @@ def main():
     
     coordinator.send_pre_commit()
 
-    print_snapshot("Before partition", [coordinator, p1, p2])
+    print_snapshot("Truoc phan vung", [coordinator, p1, p2])
 
+    print("\n--- Mo phong phan vung mang: {C, P1} | {P2} ---")
     network.set_partitions([{coordinator_id, "P1"}, {"P2"}])
+
+    print("--- Mo phong Coordinator loi ngay sau PRE_COMMIT ---")
     network.unregister(coordinator_id)
 
-    p2 = Participant(
-        "P2",
-        network,
-        datastores=stores,
-        owned_resources={"car"},
-        peer_ids=["P1", "P2"],
-        log_path=os.path.join(log_dir, "p2.log"),
-    )
-    network.register("P2", p2)
-
+    print("\n--- Chay giao thuc ket thuc ---")
     p1_decision = p1.handle_pre_commit_timeout()
     p2_decision = p2.handle_pre_commit_timeout()
 
-    print_snapshot("After partition and timeout", [p1, p2])
-    print(f"P1 termination decision: {p1_decision}")
-    print(f"P2 termination decision: {p2_decision}")
-    coordinator_recovered = Coordinator(
-        coordinator_id,
-        network,
-        participant_ids,
-        log_path=os.path.join(log_dir, "coordinator.log"),
-    )
-    network.register(coordinator_id, coordinator_recovered)
-    c_decision = coordinator_recovered.resume_after_crash()
-    print(f"Coordinator recovered to state: {coordinator_recovered.state}")
-    print(f"Coordinator resume decision: {c_decision}")
+    print_snapshot("Sau phan vung va het thoi gian cho", [p1, p2])
+    print(f"\nQuyet dinh ket thuc cua P1: {p1_decision}")
+    print(f"Quyet dinh ket thuc cua P2: {p2_decision}")
 
-    print("\nAvailability snapshot:")
+    print("\n--- Mo phong Coordinator phuc hoi ---")
+    network.clear_partitions()
+    network.register(coordinator.node_id, coordinator)
+    recovered_state = coordinator.state
+    print(f"Coordinator phuc hoi o trang thai: {recovered_state}")
+
+    resume_decision = coordinator.resume_after_crash()
+    print(f"Coordinator tiep tuc quyet dinh: {resume_decision}")
+
+    print("\n--- Trang thai du lieu cuoi ---")
+    print("Anh xa ton kho:")
     for name, store in stores.items():
         print(f"{name}: {store.snapshot()}")
 

@@ -1,5 +1,6 @@
 import csv
 import os
+import random
 from datetime import date, timedelta
 
 
@@ -19,30 +20,32 @@ def _write_csv(path, rows):
 
 def generate():
     start = date(2026, 5, 22)
-    days = 5
+    days = 100  # Tăng số lượng bản ghi
     hotel_rows = []
     flight_rows = []
     car_rows = []
+    locations = ["HCM", "Hanoi", "Danang", "Phu Quoc"]
 
     for i in range(days):
         d = (start + timedelta(days=i)).isoformat()
+        loc = random.choice(locations)
         hotel_rows.append({
             "resource_id": f"H-{i+1}",
-            "location": "HCM",
+            "location": loc,
             "date": d,
-            "available": 5,
+            "available": random.randint(0, 10),  # Số lượng ngẫu nhiên
         })
         flight_rows.append({
             "resource_id": f"F-{i+1}",
-            "location": "HCM",
+            "location": loc,
             "date": d,
-            "available": 8,
+            "available": random.randint(0, 20),  # Số lượng ngẫu nhiên
         })
         car_rows.append({
             "resource_id": f"C-{i+1}",
-            "location": "HCM",
+            "location": loc,
             "date": d,
-            "available": 3,
+            "available": random.randint(0, 5),   # Số lượng ngẫu nhiên
         })
 
     _write_csv(os.path.join(BASE_DIR, "Hotel_Rooms.csv"), hotel_rows)
@@ -52,3 +55,4 @@ def generate():
 
 if __name__ == "__main__":
     generate()
+    print("Generated 100 records for each dataset.")
