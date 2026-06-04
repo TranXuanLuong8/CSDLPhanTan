@@ -77,33 +77,33 @@ def main():
     
     coordinator.send_pre_commit()
 
-    print_snapshot("Truoc phan vung", [coordinator, p1, p2])
+    print_snapshot("Trước phân vùng", [coordinator, p1, p2])
 
-    print("\n--- Mo phong phan vung mang: {C, P1} | {P2} ---")
+    print("\n--- Mô phỏng phân vùng mạng: {C, P1} | {P2} ---")
     network.set_partitions([{coordinator_id, "P1"}, {"P2"}])
 
-    print("--- Mo phong Coordinator loi ngay sau PRE_COMMIT ---")
+    print("--- Mô phỏng Coordinator lỗi ngay sau PRE_COMMIT ---")
     network.unregister(coordinator_id)
 
-    print("\n--- Chay giao thuc ket thuc ---")
+    print("\n--- Chạy giao thức kết thúc ---")
     p1_decision = p1.handle_pre_commit_timeout()
     p2_decision = p2.handle_pre_commit_timeout()
 
-    print_snapshot("Sau phan vung va het thoi gian cho", [p1, p2])
-    print(f"\nQuyet dinh ket thuc cua P1: {p1_decision}")
-    print(f"Quyet dinh ket thuc cua P2: {p2_decision}")
+    print_snapshot("Sau phân vùng và hết thời gian chờ", [p1, p2])
+    print(f"\nQuyết định kết thúc của P1: {p1_decision}")
+    print(f"Quyết định kết thúc của P2: {p2_decision}")
 
-    print("\n--- Mo phong Coordinator phuc hoi ---")
+    print("\n--- Mô phỏng Coordinator phục hồi ---")
     network.clear_partitions()
     network.register(coordinator.node_id, coordinator)
     recovered_state = coordinator.state
-    print(f"Coordinator phuc hoi o trang thai: {recovered_state}")
+    print(f"Coordinator phục hồi ở trạng thái: {recovered_state}")
 
     resume_decision = coordinator.resume_after_crash()
-    print(f"Coordinator tiep tuc quyet dinh: {resume_decision}")
+    print(f"Coordinator tiếp tục quyết định: {resume_decision}")
 
-    print("\n--- Trang thai du lieu cuoi ---")
-    print("Anh xa ton kho:")
+    print("\n--- Trạng thái dữ liệu cuối ---")
+    print("Ảnh hưởng đến tồn kho:")
     for name, store in stores.items():
         print(f"{name}: {store.snapshot()}")
 
