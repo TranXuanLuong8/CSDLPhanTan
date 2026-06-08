@@ -14,11 +14,11 @@ class Coordinator:
         self.participant_ids = list(participant_ids)
         self.state = STATE_INIT
         self.tx_id = None
-        self.reservations = []
-        self.votes = {}
-        self.acks = {}
-        self.log = []
-        self.log_path = log_path
+        self.reservations = []                  # Danh sách yêu cầu đặt chỗ/thay đổi tài nguyên của giao dịch
+        self.votes = {}                         # Từ điển (Dict) dùng để gom phiếu bầu của các nút gửi về
+        self.acks = {}                          # Từ điển dùng để gom xác nhận (ACK) ở pha Pre-Commit
+        self.log = []                           # Mảng lưu lịch sử các bước chạy trên RAM
+        self.log_path = log_path                # Đường dẫn file nhật ký cứng để khôi phục khi sập nguồn
         if self.log_path:
             self._load_log()
 

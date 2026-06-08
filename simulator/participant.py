@@ -9,18 +9,18 @@ STATE_ABORT = "ABORT"
 
 class Participant:
     def __init__(self, node_id, network, datastores, owned_resources, peer_ids, log_path=None):
-        self.node_id = node_id
+        self.node_id = node_id #lưu ID của nút này để sử dụng khi gửi tin nhắn hoặc ghi log
         self.network = network
         self.datastores = datastores
         self.owned_resources = set(owned_resources)
         self.peer_ids = list(peer_ids)
         self.state = STATE_INIT
         self.tx_id = None
-        self.log = []
-        self.pending_reservations = []
-        self.log_path = log_path
-        if self.log_path:
-            self._load_log()
+        self.log = [] #mảng lưu lịch sử các bước chạy trong RAM 
+        self.pending_reservations = [] #Danh sách giữ tài nguyên tạm thời , chưa lưu vào DB
+        self.log_path = log_path #Đường dẫn file nhật ký(để phục hồi sau khi sập nguồn)
+        if self.log_path: 
+            self._load_log()    
 
     def on_message(self, message, from_id):
         msg_type = message["type"]
@@ -38,11 +38,11 @@ class Participant:
             raise ValueError(f"Unknown message type: {msg_type}")
 
     def _on_vote_req(self, message, from_id):
-        self.tx_id = message["tx_id"]
-        self.pending_reservations = message["reservations"]
+        self.tx_id = message["tx_id"] # Ghi nhận ID giao dịch từ Điều phối viên
+        self.pending_reservations = message["reservations"]  #lưu lại danh sách tài nguyên tạm thời
         self.state = STATE_WAIT
-        self._append_log(self.state, reservations=self.pending_reservations)
-        decision = self._can_commit()
+        self._append_log(self.state, reservations=self.pending_reservations) # Ghi log trạng thái mới cùng với danh sách tài nguyên tạm thời
+        decision = self._can_commit()  #gọi hàm kiểm tra kho xem đủ tài nguyên để cam kết hay không
         if decision:
             self.network.send(self.node_id, from_id, {
                 "type": "VOTE_COMMIT",
@@ -60,7 +60,7 @@ class Participant:
         if self.state != STATE_WAIT:
             return
         self.state = STATE_PRE_COMMIT
-        self._append_log(self.state)
+        self._append_log(self.state) # Ghi log trạng thái mới
         self.network.send(self.node_id, from_id, {
             "type": "ACK",
             "tx_id": self.tx_id,
@@ -79,26 +79,26 @@ class Participant:
         self.state = STATE_ABORT
         self._append_log(self.state)
 
-    def _on_state_req(self, message, from_id):
+    def _on_state_req(self, message, from_id): #hàm trả lời trạng thái cho các nút khác
         self.network.send(self.node_id, from_id, {
             "type": "STATE_RESP",
-            "tx_id": self.tx_id,
+            "tx_id": self.tx_id, 
             "state": self.state,
         })
 
     def get_state(self, tx_id):
         if tx_id != self.tx_id:
             return None
-        return self.state
+        return self.state   
 
     def handle_pre_commit_timeout(self):
-        if self.state != STATE_PRE_COMMIT:
+        if self.state != STATE_PRE_COMMIT: 
             return None
-        states = []
+        states = [] #Thu thập trạng thái từ các nút khác để đưa ra quyết định kết thúc giao dịch khi ở trạng thái PRE_COMMIT
         for peer in self.peer_ids:
             if peer == self.node_id:
                 continue
-            state = self.network.request_state(self.node_id, peer, self.tx_id)
+            state = self.network.request_state(self.node_id, peer, self.tx_id) #Gửi yêu cầu trạng thái đến các nút khác và thu thập phản hồi
             if state is not None:
                 states.append(state)
         decision = self._termination_decision(states)
@@ -145,7 +145,7 @@ class Participant:
 
     def _can_commit(self):
         for item in self.pending_reservations:
-            if item["resource"] not in self.owned_resources:
+            if item["resource"] not in self.owned_resources: #Nếu tài nguyên không thuộc sở hữu của nút này, bỏ qua kiểm tra 
                 continue
             store = self.datastores[item["resource"]]
             if not store.can_reserve(item["item_id"], item["qty"]):
@@ -166,7 +166,7 @@ class Participant:
             "log": list(self.log),
         }
 
-    def _append_log(self, state, reservations=None):
+    def _append_log(self, state, reservations=None): #Ghi log trạng thái mới vào RAM và đồng thời ghi vào file nếu có đường dẫn log_path
         entry = {
             "tx_id": self.tx_id,
             "state": state,

@@ -4,8 +4,6 @@ from coordinator import Coordinator
 from datastore import DataStore
 from network import Network
 from participant import Participant
-from data.generate_datasets import generate
-
 
 def build_datastores(base_dir):
     return {
@@ -30,7 +28,7 @@ def main():
         path = os.path.join(log_dir, name)
         if os.path.exists(path):
             os.remove(path)
-    generate()
+    
     stores = build_datastores(base_dir)
 
     network = Network()
