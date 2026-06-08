@@ -13,7 +13,7 @@ def build_datastores(base_dir):
     }
 
 
-def print_snapshot(title, nodes):
+def print_snapshot(title, nodes): #Hàm này dùng để in ra trạng thái hiện tại của các nút (Coordinator và Participants) sau khi có sự kiện phân vùng mạng hoặc phục hồi, nó sẽ gọi phương thức snapshot() của từng nút để lấy thông tin trạng thái và log
     print("\n" + title)
     for node in nodes:
         snap = node.snapshot()
@@ -98,7 +98,11 @@ def main():
     print(f"Coordinator phục hồi ở trạng thái: {recovered_state}")
 
     resume_decision = coordinator.resume_after_crash()
-    print(f"Coordinator tiếp tục quyết định: {resume_decision}")
+    print(f"Coordinator tiếp tục phát lại: {resume_decision}")
+
+    print("\n--- Coordinator chờ xác nhận (ACK) từ các Participant để Commit ---")
+    final_decision = coordinator.handle_ack_timeout()
+    print(f"Coordinator quyết định CHỐT CUỐI CÙNG: {final_decision}")
 
     print("\n--- Trạng thái dữ liệu cuối ---")
     print("Ảnh hưởng đến tồn kho:")

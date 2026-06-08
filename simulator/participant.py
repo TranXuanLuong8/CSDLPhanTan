@@ -62,7 +62,7 @@ class Participant:
         self.state = STATE_PRE_COMMIT
         self._append_log(self.state) # Ghi log trạng thái mới
         self.network.send(self.node_id, from_id, {
-            "type": "ACK",
+            "type": "ACK", #Gửi ACK để xác nhận đã nhận được PRE_COMMIT từ Điều phối viên
             "tx_id": self.tx_id,
         })
 
@@ -81,7 +81,7 @@ class Participant:
 
     def _on_state_req(self, message, from_id): #hàm trả lời trạng thái cho các nút khác
         self.network.send(self.node_id, from_id, {
-            "type": "STATE_RESP",
+            "type": "STATE_RESP", #loại tin nhắn trả lời trạng thái
             "tx_id": self.tx_id, 
             "state": self.state,
         })
@@ -178,7 +178,7 @@ class Participant:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
 
-    def _load_log(self):
+    def _load_log(self): #Hàm này sẽ đọc khi khởi tạo để phục hồi trạng thái sau khi sập nguồn, nó sẽ đọc file log và lấy trạng thái cuối cùng của giao dịch để khôi phục
         try:
             with open(self.log_path, "r", encoding="utf-8") as f:
                 last_tx = None

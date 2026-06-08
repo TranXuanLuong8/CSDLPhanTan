@@ -15,7 +15,7 @@ class Coordinator:
         self.state = STATE_INIT
         self.tx_id = None
         self.reservations = []                  # Danh sách yêu cầu đặt chỗ/thay đổi tài nguyên của giao dịch
-        self.votes = {}                         # Từ điển (Dict) dùng để gom phiếu bầu của các nút gửi về
+        self.votes = {}                         # Từ điển dùng để gom phiếu bầu của các nút gửi về
         self.acks = {}                          # Từ điển dùng để gom xác nhận (ACK) ở pha Pre-Commit
         self.log = []                           # Mảng lưu lịch sử các bước chạy trên RAM
         self.log_path = log_path                # Đường dẫn file nhật ký cứng để khôi phục khi sập nguồn
@@ -41,7 +41,7 @@ class Coordinator:
         self.state = STATE_WAIT
         self._append_log(self.state, reservations=self.reservations)
 
-    def send_vote_req(self):
+    def send_vote_req(self): #gửi yêu cầu bỏ phiếu 
         for pid in self.participant_ids:
             self.network.send(self.node_id, pid, {
                 "type": "VOTE_REQ",
@@ -49,7 +49,7 @@ class Coordinator:
                 "reservations": self.reservations,
             })
 
-    def _on_vote(self, message, from_id):
+    def _on_vote(self, message, from_id): #gom phiếu bầu
         self.votes[from_id] = message["type"]
 
     def handle_vote_timeout(self):
@@ -82,10 +82,10 @@ class Coordinator:
             })
         return True
 
-    def _on_ack(self, message, from_id):
+    def _on_ack(self, message, from_id): #gom xác nhận 
         self.acks[from_id] = True
 
-    def handle_ack_timeout(self):
+    def handle_ack_timeout(self): #điểm đắt giá 3PC
         if self.state != STATE_PRE_COMMIT:
             return None
         if self.can_commit():
@@ -121,7 +121,7 @@ class Coordinator:
                 "tx_id": self.tx_id,
             })
 
-    def snapshot(self):
+    def snapshot(self): 
         return {
             "node": self.node_id,
             "state": self.state,
@@ -153,7 +153,7 @@ class Coordinator:
             return STATE_ABORT
         return None
 
-    def _append_log(self, state, reservations=None):
+    def _append_log(self, state, reservations=None): #Hàm này sẽ được gọi mỗi khi trạng thái của Coordinator thay đổi, nó sẽ ghi lại trạng thái mới vào log trên RAM và đồng thời ghi vào file log cứng để có thể phục hồi sau khi sập nguồn
         entry = {
             "tx_id": self.tx_id,
             "state": state,
@@ -165,7 +165,7 @@ class Coordinator:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
 
-    def _load_log(self):
+    def _load_log(self): #Hàm này sẽ đọc khi khởi tạo để phục hồi trạng thái sau khi sập nguồn, nó sẽ đọc file log và lấy trạng thái cuối cùng của giao dịch để khôi phục
         try:
             with open(self.log_path, "r", encoding="utf-8") as f:
                 last_tx = None
